@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/ahm1388/realtime-chat/config"
 )
@@ -50,21 +51,62 @@ func RunSyncTCPServer() {
 		con_clients += 1
 		log.Println("client connected with address:", c.RemoteAddr(), "concurrent clients", con_clients)
 		
+		justJoined := true
+		var name string = ""
 		for {
-			// over the socket, continuously read the command and print it out
-			cmd, err := readCommand(c)
-			if err != nil {
-				c.Close()
-				con_clients -= 1
-				log.Println("client disconnected", c.RemoteAddr(), "concurrent clients", con_clients)
-				if err == io.EOF {
+			if justJoined {
+				if _, err := c.Write([]byte("name: ")); err != nil {
+					log.Print("err write:", err)
+					c.Close()
+					con_clients -= 1
 					break
 				}
-				log.Println("err", err)
-			}
-			log.Println("command", cmd)
-			if err = respond(cmd, c); err != nil {
-				log.Print("err write:", err)
+
+				// read the name provided by the user
+				name, err = readCommand(c)
+				if err != nil {
+						log.Println("err reading name:", err)
+						c.Close()
+						con_clients -= 1
+						break
+				}
+		
+				name = strings.TrimSpace(name)
+		
+				if name == "" {
+						if _, err := c.Write([]byte("Invalid name. Please try again.\n")); err != nil {
+								log.Print("err write:", err)
+						}
+						continue
+				}
+
+				// Send a welcome message
+				if err = respond("Welcome to the chat room, " + name + "!\n", c); err != nil {
+					log.Print("err write:", err)
+				}
+				
+				log.Println("User's name:", name)
+				justJoined = false
+				
+			} else {
+				// over the socket, continuously read the command and print it out
+				cmd, err := readCommand(c)
+				if err != nil {
+					c.Close()
+					con_clients -= 1
+					log.Println("client disconnected", c.RemoteAddr(), "concurrent clients", con_clients)
+					if err == io.EOF {
+						break
+					}
+					log.Println("err", err)
+				}
+
+				// prefix the message with the user's name
+				cmdWithUserName := "[" + name + "] " + cmd
+				log.Println("command", cmd)
+				if err = respond(cmdWithUserName, c); err != nil {
+					log.Print("err write:", err)
+				}
 			}
 		}
 	}
