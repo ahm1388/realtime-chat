@@ -91,14 +91,20 @@ func RunSyncTCPServer() {
 			} else {
 				// over the socket, continuously read the command and print it out
 				cmd, err := readCommand(c)
+				if strings.TrimSpace(cmd) == "exit" {
+					c.Close()
+					con_clients -= 1
+					log.Println("client disconnected", c.RemoteAddr(), "concurrent clients", con_clients)
+					break
+				}
 				if err != nil {
 					c.Close()
 					con_clients -= 1
 					log.Println("client disconnected", c.RemoteAddr(), "concurrent clients", con_clients)
 					if err == io.EOF {
-						break
+						log.Println("err", err)
 					}
-					log.Println("err", err)
+					break
 				}
 
 				// prefix the message with the user's name
