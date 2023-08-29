@@ -14,6 +14,6 @@ func setupFlags () {
 }
 func main () {
 	setupFlags()
-	log.Println("Listening for statement to echo...")
+	log.Println("Chat server started. Listening...")
 	server.RunSyncTCPServer()
 }
